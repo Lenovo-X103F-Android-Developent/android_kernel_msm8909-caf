@@ -222,6 +222,8 @@ source "drivers/input/serio/Kconfig"
 
 source "drivers/input/gameport/Kconfig"
 
+#yuquan added charger and hall notify
+source "drivers/input/notify/Kconfig"
 endmenu
 
 endmenu

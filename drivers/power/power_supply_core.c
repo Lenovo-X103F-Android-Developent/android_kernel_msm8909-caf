@@ -19,7 +19,10 @@
 #include <linux/power_supply.h>
 #include <linux/thermal.h>
 #include "power_supply.h"
-
+/*Added by liumx for save usb insert 20150915 start*/
+static int usb_status;
+module_param(usb_status, int, S_IRUGO | S_IWUSR);
+/*Added by liumx for save usb insert 20150915 end*/
 /* exported for the APM Power driver, APM emulation */
 struct class *power_supply_class;
 EXPORT_SYMBOL_GPL(power_supply_class);
@@ -206,7 +209,11 @@ int power_supply_set_supply_type(struct power_supply *psy,
 				enum power_supply_type supply_type)
 {
 	const union power_supply_propval ret = {supply_type,};
-
+	/*Added by liumx for save usb insert 20150915 start*/
+	if (supply_type == POWER_SUPPLY_TYPE_USB)
+		usb_status = supply_type;
+	pr_info("%s:supply_type=%d\n",__func__,supply_type);
+	/*Added by liumx for save usb insert 20150915 end*/
 	if (psy->set_property)
 		return psy->set_property(psy, POWER_SUPPLY_PROP_TYPE,
 								&ret);

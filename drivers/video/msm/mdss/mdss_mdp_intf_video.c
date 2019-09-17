@@ -116,7 +116,7 @@ int mdss_mdp_video_addr_setup(struct mdss_data_type *mdata,
 
 	for (i = 0; i < count; i++) {
 		head[i].base = mdata->mdss_io.base + offsets[i];
-		pr_debug("adding Video Intf #%d offset=0x%x virt=%pK\n", i,
+		pr_debug("adding Video Intf #%d offset=0x%x virt=%p\n", i,
 				offsets[i], head[i].base);
 		head[i].ref_cnt = 0;
 		head[i].intf_num = i + MDSS_MDP_INTF0;
@@ -442,7 +442,7 @@ static int mdss_mdp_video_intfs_stop(struct mdss_mdp_ctl *ctl,
 			pr_err("Intf %d not in use\n", (inum + MDSS_MDP_INTF0));
 			return -ENODEV;
 		}
-		pr_debug("stop ctl=%d video Intf #%d base=%pK", ctl->num,
+		pr_debug("stop ctl=%d video Intf #%d base=%p", ctl->num,
 			ctx->intf_num, ctx->base);
 	} else {
 		pr_err("Invalid intf number: %d\n", (inum + MDSS_MDP_INTF0));
@@ -651,7 +651,8 @@ static void mdss_mdp_video_underrun_intr_done(void *arg)
 	MDSS_XLOG(ctl->num, ctl->underrun_cnt);
 	MDSS_XLOG_TOUT_HANDLER("mdp", "dsi0", "dsi1", "edp", "hdmi", "panic");
 	trace_mdp_video_underrun_done(ctl->num, ctl->underrun_cnt);
-	pr_debug("display underrun detected for ctl=%d count=%d\n", ctl->num,
+	/*modify by xingbin for underrun debug*/
+	pr_err("display underrun detected for ctl=%d count=%d\n", ctl->num,
 			ctl->underrun_cnt);
 
 	if (ctl->opmode & MDSS_MDP_CTL_OP_PACK_3D_ENABLE)
@@ -1158,7 +1159,7 @@ static int mdss_mdp_video_intfs_setup(struct mdss_mdp_ctl *ctl,
 				(inum + MDSS_MDP_INTF0));
 			return -EBUSY;
 		}
-		pr_debug("video Intf #%d base=%pK", ctx->intf_num, ctx->base);
+		pr_debug("video Intf #%d base=%p", ctx->intf_num, ctx->base);
 		ctx->ref_cnt++;
 	} else {
 		pr_err("Invalid intf number: %d\n", (inum + MDSS_MDP_INTF0));
@@ -1197,21 +1198,15 @@ static int mdss_mdp_video_intfs_setup(struct mdss_mdp_ctl *ctl,
 
 	dst_bpp = pinfo->fbc.enabled ? (pinfo->fbc.target_bpp) : (pinfo->bpp);
 
-	itp.width = mult_frac((pinfo->xres + pinfo->lcdc.border_left +
-			pinfo->lcdc.border_right), dst_bpp, pinfo->bpp);
-	itp.height = pinfo->yres + pinfo->lcdc.border_top +
-					pinfo->lcdc.border_bottom;
+	itp.width = mult_frac((pinfo->xres + pinfo->lcdc.xres_pad),
+				dst_bpp, pinfo->bpp);
+	itp.height = pinfo->yres + pinfo->lcdc.yres_pad;
 	itp.border_clr = pinfo->lcdc.border_clr;
 	itp.underflow_clr = pinfo->lcdc.underflow_clr;
 	itp.hsync_skew = pinfo->lcdc.hsync_skew;
 
-	/* tg active area is not work, hence yres should equal to height */
-	itp.xres = mult_frac((pinfo->xres + pinfo->lcdc.border_left +
-			pinfo->lcdc.border_right), dst_bpp, pinfo->bpp);
-
-	itp.yres = pinfo->yres + pinfo->lcdc.border_top +
-				pinfo->lcdc.border_bottom;
-
+	itp.xres = mult_frac(pinfo->xres, dst_bpp, pinfo->bpp);
+	itp.yres = pinfo->yres;
 	itp.h_back_porch = pinfo->lcdc.h_back_porch;
 	itp.h_front_porch = pinfo->lcdc.h_front_porch;
 	itp.v_back_porch = pinfo->lcdc.v_back_porch;

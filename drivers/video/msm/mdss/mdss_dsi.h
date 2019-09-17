@@ -98,9 +98,6 @@ enum dsi_panel_status_mode {
 	ESD_REG,
 	ESD_REG_NT35596,
 	ESD_TE,
-#ifdef CONFIG_MACH_CP8675
-	ESD_REG_YL,
-#endif
 	ESD_MAX,
 };
 
@@ -255,19 +252,6 @@ struct dsi_panel_cmds {
 	int link_state;
 };
 
-#ifdef CONFIG_MACH_CP8675
-struct status_reg {
-	u8 reg;
-	u8 num_vals;
-	u8 *vals;
-};
-
-struct dsi_panel_status_regs {
-	size_t num_regs;
-	struct status_reg *regs;
-};
-#endif
-
 struct dsi_kickoff_action {
 	struct list_head act_entry;
 	void (*action) (void *);
@@ -370,8 +354,10 @@ struct mdss_dsi_ctrl_pdata {
 	bool panel_bias_vreg;
 	bool dsi_irq_line;
 	atomic_t te_irq_ready;
-
 	bool cmd_clk_ln_recovery_en;
+//zwt add
+	int lcm_bias_enable;
+//zwt add 
 	bool cmd_sync_wait_broadcast;
 	bool cmd_sync_wait_trigger;
 
@@ -391,9 +377,6 @@ struct mdss_dsi_ctrl_pdata {
 	struct dsi_panel_cmds post_panel_on_cmds;
 	struct dsi_panel_cmds off_cmds;
 	struct dsi_panel_cmds status_cmds;
-#ifdef CONFIG_MACH_CP8675
-	struct dsi_panel_status_regs status_regs;
-#endif
 	u32 status_cmds_rlen;
 	u32 status_value;
 	u32 status_error_count;
@@ -451,10 +434,10 @@ int dsi_panel_device_register(struct device_node *pan_node,
 				struct mdss_dsi_ctrl_pdata *ctrl_pdata);
 
 int mdss_dsi_cmds_tx(struct mdss_dsi_ctrl_pdata *ctrl,
-		struct dsi_cmd_desc *cmds, int cnt, int use_dma_tpg);
+		struct dsi_cmd_desc *cmds, int cnt);
 
 int mdss_dsi_cmds_rx(struct mdss_dsi_ctrl_pdata *ctrl,
-			struct dsi_cmd_desc *cmds, int rlen, int use_dma_tpg);
+			struct dsi_cmd_desc *cmds, int rlen);
 
 void mdss_dsi_host_init(struct mdss_panel_data *pdata);
 void mdss_dsi_op_mode_config(int mode,

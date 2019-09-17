@@ -26,6 +26,16 @@
 #include "mmc_ops.h"
 #include "sd_ops.h"
 
+/* Added by wangjiao1 for increase flash hardware_info, SW00184347(AL650X) 20160222, begin */
+#ifdef CONFIG_GET_HARDWARE_INFO
+#include <mach/hardware_info.h>
+static char tmp_flash_name[100];
+#define MCP_SAMSUNG_MANIFACTURE_ID 0x15
+#define MCP_HYNIX_MANIFACTURE_ID 0x90
+#define MCP_MICRON_MANIFACTURE_ID 0x13
+#define MCP_KINGSTON_MANIFACTURE_ID 0x70
+#endif
+/* Added by wangjiao1 for increase flash hardware_info, SW00184347(AL650X) 20160222, end */
 static const unsigned int tran_exp[] = {
 	10000,		100000,		1000000,	10000000,
 	0,		0,		0,		0
@@ -1514,6 +1524,54 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 					mmc_hostname(host), __func__, err);
 			goto free_card;
 		}
+
+/* Added by wangjiao1 for increase flash hardware_info, SW00184347(AL650X) 20160222, begin */
+#if defined(CONFIG_GET_HARDWARE_INFO)
+        if(host->index==0)
+        {
+            pr_info("%s:manifacture id is 0x%x\n",mmc_hostname(card->host),card->cid.manfid);
+            memset(tmp_flash_name, 0, sizeof(tmp_flash_name));
+            if(MCP_HYNIX_MANIFACTURE_ID==card->cid.manfid)
+            {
+                snprintf(tmp_flash_name, 100, "HYNIX: %u MB(EMMC) 1GB(DDR)", card->ext_csd.sectors / 2048);
+                register_hardware_info(EMCP, tmp_flash_name);
+            }
+            else if(MCP_SAMSUNG_MANIFACTURE_ID==card->cid.manfid)
+            {
+                if(!strncmp(card->cid.prod_name, "Q4Z3MB", 6))
+                {
+                    snprintf(tmp_flash_name, 100, "SAMSUNG: %u MB(EMMC) 2GB(DDR)", card->ext_csd.sectors / 2048);
+                    register_hardware_info(EMCP, tmp_flash_name);
+                }
+                else if(!strncmp(card->cid.prod_name, "F822MB", 6))
+                {
+                    snprintf(tmp_flash_name, 100, "SAMSUNG: %u MB(EMMC) 1GB(DDR)", card->ext_csd.sectors / 2048);
+                    register_hardware_info(EMCP, tmp_flash_name);
+                }
+                else
+                {
+                    snprintf(tmp_flash_name, 100, "SAMSUNG: %u MB(EMMC) 2GB(DDR)", card->ext_csd.sectors / 2048);
+                    register_hardware_info(EMCP, tmp_flash_name);
+                }
+            }
+            else if(MCP_MICRON_MANIFACTURE_ID==card->cid.manfid)
+            {
+                snprintf(tmp_flash_name, 100, "MICRON: %u MB(EMMC) 1GB(DDR)", card->ext_csd.sectors / 2048);
+                register_hardware_info(EMCP, tmp_flash_name);
+            }
+            else if(MCP_KINGSTON_MANIFACTURE_ID==card->cid.manfid)
+            {
+                snprintf(tmp_flash_name, 100, "KINGSTON: %u MB(EMMC) 1GB(DDR)", card->ext_csd.sectors / 2048);
+                register_hardware_info(EMCP, tmp_flash_name);
+            }
+            else
+            {
+                snprintf(tmp_flash_name, 100,"%s: %u MB(EMMC) 1GB(DDR)" ,card->cid.prod_name, card->ext_csd.sectors / 2048);
+                register_hardware_info(EMCP, tmp_flash_name);
+            }
+        }
+#endif
+/* Added by wangjiao1 for increase flash hardware_info, SW00184347(AL650X) 20160222, end */
 
 		/* If doing byte addressing, check if required to do sector
 		 * addressing.  Handle the case of <2GB cards needing sector

@@ -1683,6 +1683,15 @@ static struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev,
 		goto out;
 	}
 
+/* Modified by lichuangchuang to emmc and sdcard (A650X) SW00183905 2015-02-02 begin */
+	pdata->status_gpio = of_get_named_gpio_flags(np, "vdd-enable-gpios", 0, &flags);
+	if (gpio_is_valid(pdata->status_gpio)){
+		if(!gpio_request(pdata->status_gpio, "mmc1_vdd_enable")){
+			pr_err("mmc1 vdd enable");
+			gpio_direction_output(pdata->status_gpio, 1);
+		}
+	}
+/* Modified by lichuangchuang to emmc and sdcard (A650X) SW00183905 2015-02-02 end */
 	pdata->status_gpio = of_get_named_gpio_flags(np, "cd-gpios", 0, &flags);
 	if (gpio_is_valid(pdata->status_gpio) & !(flags & OF_GPIO_ACTIVE_LOW))
 		pdata->caps2 |= MMC_CAP2_CD_ACTIVE_HIGH;

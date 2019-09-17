@@ -1098,29 +1098,27 @@ config TOUCHSCREEN_GT9XX
 
 source "drivers/input/touchscreen/gt9xx/Kconfig"
 
-config TOUCHSCREEN_GT9XX_HQ
-	bool "Goodix touchpanel (HQ variant)"
+config TOUCHSCREEN_FTS
+	bool "Focaltech touchpanel FT5626 series"
 	depends on I2C
 	help
-	  Say Y here if you have a Goodix GT9xx touchscreen (Huaqin variant).
-	  Gt9xx controllers are multi touch controllers which can
+	  Say Y here if you have a Focaltech FT5626 touchscreen.
+	  FT5626 controllers are multi touch controllers which can
 	  report 5 touches at a time.
 
-	  If unsure, say N.
+          If unsure, say N.
 
-source "drivers/input/touchscreen/gt9xx_hq/Kconfig"
-
-config TOUCHSCREEN_GT9XX_YL
-	bool "Goodix touchpanel (Yulong variant)"
+config TOUCHSCREEN_GT9110
+	bool "Goodix touchpanel GT9110 series"
 	depends on I2C
 	help
-	  Say Y here if you have a Goodix GT9xx touchscreen (Yulong variant).
-	  Gt9xx controllers are multi touch controllers which can
+	  Say Y here if you have a Goodix GT9110 touchscreen.
+	  GT9110 controllers are multi touch controllers which can
 	  report 5 touches at a time.
 
-	  If unsure, say N.
+          If unsure, say N.
 
-source "drivers/input/touchscreen/gt9xx_yl/Kconfig"
+source "drivers/input/touchscreen/GT9110/Kconfig"
 
 config TOUCHSCREEN_BU21150
 	tristate "JDI AFE BU21150"
