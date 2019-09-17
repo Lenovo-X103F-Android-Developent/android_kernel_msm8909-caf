@@ -196,13 +196,16 @@ static void usb_udc_nop_release(struct device *dev)
  * @release: a gadget release function.
  *
  * Returns zero on success, negative errno otherwise.
- * Calls the gadget release function in the latter case.
  */
 int usb_add_gadget_udc_release(struct device *parent, struct usb_gadget *gadget,
 		void (*release)(struct device *dev))
 {
 	struct usb_udc		*udc;
 	int			ret = -ENOMEM;
+
+	udc = kzalloc(sizeof(*udc), GFP_KERNEL);
+	if (!udc)
+		goto err1;
 
 	dev_set_name(&gadget->dev, "gadget");
 	INIT_WORK(&gadget->work, usb_gadget_state_work);
@@ -217,11 +220,9 @@ int usb_add_gadget_udc_release(struct device *parent, struct usb_gadget *gadget,
 	else
 		gadget->dev.release = usb_udc_nop_release;
 
-	device_initialize(&gadget->dev);
-
-	udc = kzalloc(sizeof(*udc), GFP_KERNEL);
-	if (!udc)
-		goto err_put_gadget;
+	ret = device_register(&gadget->dev);
+	if (ret)
+		goto err2;
 
 	device_initialize(&udc->dev);
 	udc->dev.release = usb_udc_release;
@@ -230,11 +231,7 @@ int usb_add_gadget_udc_release(struct device *parent, struct usb_gadget *gadget,
 	udc->dev.parent = parent;
 	ret = dev_set_name(&udc->dev, "%s", kobject_name(&parent->kobj));
 	if (ret)
-		goto err_put_udc;
-
-	ret = device_add(&gadget->dev);
-	if (ret)
-		goto err_put_udc;
+		goto err3;
 
 	udc->gadget = gadget;
 
@@ -243,7 +240,7 @@ int usb_add_gadget_udc_release(struct device *parent, struct usb_gadget *gadget,
 
 	ret = device_add(&udc->dev);
 	if (ret)
-		goto err_unlist_udc;
+		goto err4;
 
 	usb_gadget_set_state(gadget, USB_STATE_NOTATTACHED);
 
@@ -251,17 +248,18 @@ int usb_add_gadget_udc_release(struct device *parent, struct usb_gadget *gadget,
 
 	return 0;
 
- err_unlist_udc:
+err4:
 	list_del(&udc->list);
 	mutex_unlock(&udc_lock);
 
-	device_del(&gadget->dev);
-
- err_put_udc:
+err3:
 	put_device(&udc->dev);
 
- err_put_gadget:
+err2:
 	put_device(&gadget->dev);
+	kfree(udc);
+
+err1:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(usb_add_gadget_udc_release);
