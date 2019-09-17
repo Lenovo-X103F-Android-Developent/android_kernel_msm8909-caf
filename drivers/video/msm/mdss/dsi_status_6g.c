@@ -186,18 +186,10 @@ void mdss_check_dsi_ctrl_status(struct work_struct *work, uint32_t interval)
 	mutex_unlock(&ctl->offlock);
 
 	if ((pstatus_data->mfd->panel_power_state == MDSS_PANEL_POWER_ON)) {
-		if (ret > 0) {
-#if defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
-			if (ctrl_pdata->status_mode != ESD_REG_IRQ)
-#endif
+		if (ret > 0)
 			schedule_delayed_work(&pstatus_data->check_status,
 				msecs_to_jiffies(interval));
-		} else {
-#if defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
-			if (ctrl_pdata->status_mode == ESD_REG_IRQ)
-				msleep(interval);
-#endif
+		else
 			mdss_report_panel_dead(pstatus_data);
-		}
 	}
 }
