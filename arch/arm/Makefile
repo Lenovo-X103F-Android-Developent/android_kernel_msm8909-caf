@@ -311,9 +311,9 @@ else
 	$(Q)$(MAKE) $(build)=$(boot)/dts/samsung/msm8916 MACHINE=$(MACHINE) dtbs
 endif
 endif
+
 zImage-dtb: vmlinux scripts dtbs
-	$(Q)$(MAKE) $(build)=$(boot) MACHINE=$(MACHINE) $(boot)/$@
-	
+	$(Q)$(MAKE) $(build)=$(boot) MACHINE=$(MACHINE) DTSSUBDIR=$(DTSSUBDIR) $(boot)/$@
 
 # We use MRPROPER_FILES and CLEAN_FILES now
 archclean:

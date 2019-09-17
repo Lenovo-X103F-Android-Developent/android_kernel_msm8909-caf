@@ -30,6 +30,5 @@
 #define THROTTLE_OFF	1
 #define THROTTLE_REG	2
 
-#define THROTTLE_OVERRIDE_OFF 3
 
 #endif
