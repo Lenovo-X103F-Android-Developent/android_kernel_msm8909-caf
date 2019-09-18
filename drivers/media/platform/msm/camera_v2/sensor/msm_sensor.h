@@ -125,9 +125,12 @@ long msm_sensor_subdev_fops_ioctl(struct file *file,
 	unsigned int cmd,
 	unsigned long arg);
 #endif
-
-#ifdef CONFIG_MACH_YULONG
-bool msm_sensor_is_probed(int position);
+//Add Begin  Devine for detect qtech and ofilm hi545 module 20140606
+#define GET_OTP_ID
+#ifdef GET_OTP_ID
+#define HI545_QTECH_ID    0x6
+#define HI545_OFILM_ID     0x7
+int32_t msm_get_otp_id(void);
 #endif
-
+//Add End  Devine for detect qtech and ofilm hi545 module 20140606
 #endif

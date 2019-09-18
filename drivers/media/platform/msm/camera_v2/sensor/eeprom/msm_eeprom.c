@@ -17,9 +17,23 @@
 #include "msm_sd.h"
 #include "msm_cci.h"
 #include "msm_eeprom.h"
+#include "ofilm_hi545_l545f10.h"
+#include "../msm_sensor.h" //Add by Devine for detect qtech and ofilm hi545 module 20150609
 
 #undef CDBG
 #define CDBG(fmt, args...) pr_debug(fmt, ##args)
+//Add begin Devine for detect qtech and ofilm hi545 module 20150609
+#ifdef GET_OTP_ID
+/*Modified by zhangxin for otp id get failed of 2nd or 3rd calibration module, A650X-M,SW00188788, 2016-07-06, Begin*/
+#define group_flag_0 0x40
+#define group_flag_1 0xD0
+#define group_flag_2 0xF4
+#define group_offset 16
+#define base_flag_num 1
+/*Modified by zhangxin for otp id get failed of 2nd or 3rd calibration module, A650X-M,SW00188788, 2016-07-06, End*/
+uint16_t  otp_id;
+#endif
+//Add end Devine for detect qtech and ofilm hi545 module 20150609
 
 DEFINE_MSM_MUTEX(msm_eeprom_mutex);
 #ifdef CONFIG_COMPAT
@@ -265,6 +279,65 @@ static const struct v4l2_subdev_internal_ops msm_eeprom_internal_ops = {
 	.open = msm_eeprom_open,
 	.close = msm_eeprom_close,
 };
+//Begin add by yangyongfeng for ql800 eeprom 20141113
+
+static int custom_hynix_define_otp_read(struct msm_eeprom_ctrl_t  *e_ctrl, struct msm_eeprom_memory_map_t  *emap ,  uint8_t  *memptr  )
+{
+	int m = 0;
+	int k = 0;
+	uint32_t addr = 0;
+	int rc =0;
+//initial  sensor
+	for (m = 0 ; m<sizeof(init_reg_array0)/(sizeof(init_reg_array0[0])) ; m++){
+		rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_write(&(e_ctrl->i2c_client),
+				init_reg_array0[m].reg_addr, init_reg_array0[m].reg_data, MSM_CAMERA_I2C_WORD_DATA);
+
+		if (rc < 0) {
+			pr_err("%s: init  failed\n", __func__);
+			return rc;
+		}
+	}
+// set to otp mode
+	for(m = 0 ; m < sizeof(init_otp_array)/sizeof(init_otp_array[0]) ; m++){
+		rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_write(&(e_ctrl->i2c_client),
+				init_otp_array[m].reg_addr, init_otp_array[m].reg_data, MSM_CAMERA_I2C_BYTE_DATA);
+		mdelay(init_otp_array[m].delay);
+
+		if (rc < 0) {
+			pr_err("%s: to otp mode  failed\n", __func__);
+			return rc;
+		}
+	}
+
+	for(addr = emap->mem.addr , k = 0 ; k < (emap->mem.valid_size) ; addr++ , k++){
+		rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_write(&(e_ctrl->i2c_client), 0x10A, (addr>>8)&0xff, MSM_CAMERA_I2C_BYTE_DATA);
+		rc |= e_ctrl->i2c_client.i2c_func_tbl->i2c_write(&(e_ctrl->i2c_client), 0x10B, addr & 0xff, MSM_CAMERA_I2C_BYTE_DATA);
+		rc |= e_ctrl->i2c_client.i2c_func_tbl->i2c_write(&(e_ctrl->i2c_client), 0x102, 0, MSM_CAMERA_I2C_BYTE_DATA);
+		rc |=e_ctrl->i2c_client.addr_type = MSM_CAMERA_I2C_WORD_DATA;
+		rc |=e_ctrl->i2c_client.i2c_func_tbl->i2c_read_seq(&(e_ctrl->i2c_client), 0x108,memptr, 1);
+		CDBG("custom:addr :[0x%x] value :(%d)\n",addr,*memptr);
+		memptr++;  // must
+		if (rc < 0) {
+			pr_err("%s: read failed\n", __func__);
+			return rc;
+		}
+	}
+
+	//set  to normol mode
+	for(m = 0; m<sizeof(otp_to_norm_mode_array)/sizeof(otp_to_norm_mode_array[0]);m++){
+		rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_write(&(e_ctrl->i2c_client),
+					otp_to_norm_mode_array[m].reg_addr, otp_to_norm_mode_array[m].reg_data, 1);
+		if (rc < 0) {
+			pr_err("%s: to normal  failed\n", __func__);
+			return rc;
+		}
+	}
+
+	return rc;
+
+}
+//End add by yangyongfeng for ql800 eeprom 20141113
+
 /**
   * read_eeprom_memory() - read map data into buffer
   * @e_ctrl:	eeprom control struct
@@ -333,15 +406,24 @@ static int read_eeprom_memory(struct msm_eeprom_ctrl_t *e_ctrl,
 		}
 
 		if (emap[j].mem.valid_size) {
-			e_ctrl->i2c_client.addr_type = emap[j].mem.addr_t;
-			rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_read_seq(
-				&(e_ctrl->i2c_client), emap[j].mem.addr,
-				memptr, emap[j].mem.valid_size);
-			if (rc < 0) {
-				pr_err("%s: read failed\n", __func__);
-				return rc;
+//Begin add by yangyongfeng for ql800 eeprom 20141113
+			if(strcmp(eb_info->eeprom_name,"ofilm_hi545_l545f10")==0){
+				if (emap[j].mem.valid_size) {
+		       		rc = custom_hynix_define_otp_read(e_ctrl,&emap[j] ,memptr);	
+				}
 			}
-			memptr += emap[j].mem.valid_size;
+//End add by yangyongfeng for ql800 eeprom 20141113
+			else{
+				e_ctrl->i2c_client.addr_type = emap[j].mem.addr_t;
+				rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_read_seq(
+					&(e_ctrl->i2c_client), emap[j].mem.addr,
+					memptr, emap[j].mem.valid_size);
+				if (rc < 0) {
+					pr_err("%s: read failed\n", __func__);
+					return rc;
+				}
+				memptr += emap[j].mem.valid_size;
+			}
 		}
 		if (emap[j].pageen.valid_size) {
 			e_ctrl->i2c_client.addr_type = emap[j].pageen.addr_t;
@@ -1136,7 +1218,14 @@ static int msm_eeprom_platform_remove(struct platform_device *pdev)
 	kfree(e_ctrl);
 	return 0;
 }
-
+//Add begin Devine for detect qtech and ofilm hi545 module 20150610
+#ifdef GET_OTP_ID
+int32_t msm_get_otp_id(void)
+{
+	return otp_id;
+}
+#endif
+//Add end Devine for detect qtech and ofilm hi545 module 20150610
 static int msm_eeprom_i2c_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
 {
@@ -1239,7 +1328,26 @@ static int msm_eeprom_i2c_probe(struct i2c_client *client,
 	for (j = 0; j < e_ctrl->cal_data.num_data; j++)
 		CDBG("memory_data[%d] = 0x%X\n", j,
 			e_ctrl->cal_data.mapdata[j]);
-
+	//Add begin Devine for detect qtech and ofilm hi545 module 20150610
+	#ifdef GET_OTP_ID
+      /*Modified by zhangxin for otp id get failed of 2nd or 3rd calibration module, A650X-M,SW00188788, 2016-07-06, Begin*/
+       if(((e_ctrl->cal_data.mapdata[0]<<4)&0xc0) == 0x40){
+           otp_id = e_ctrl->cal_data.mapdata[base_flag_num +(group_offset*2)];
+           printk("get group index 2\n");
+       }else if(((e_ctrl->cal_data.mapdata[0]<<2)&0xc0) == 0x40){
+           otp_id = e_ctrl->cal_data.mapdata[base_flag_num +(group_offset*1)];
+           printk("get group index 1\n");
+       }else if((e_ctrl->cal_data.mapdata[0]&0xc0) == 0x40){
+           otp_id = e_ctrl->cal_data.mapdata[base_flag_num +(group_offset*0)];
+           printk("get group index 0\n");
+       }else{
+           otp_id = -1;
+           printk("get group failed\n");
+       }
+       printk("Devine : otp_id = 0x%X\n",otp_id);
+       /*Modified by zhangxin for otp id get failed of 2nd or 3rd calibration module, A650X-M,SW00188788, 2016-07-06, End*/
+	#endif
+	//Add end Devine for detect qtech and ofilm hi545 module 20150610
 	e_ctrl->is_supported |= msm_eeprom_match_crc(&e_ctrl->cal_data);
 
 	rc = msm_camera_power_down(power_info, e_ctrl->eeprom_device_type,

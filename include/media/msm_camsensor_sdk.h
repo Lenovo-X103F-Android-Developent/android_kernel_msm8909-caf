@@ -105,6 +105,7 @@ enum msm_sensor_power_seq_gpio_t {
 	SENSOR_GPIO_VANA,
 	SENSOR_GPIO_VDIG,
 	SENSOR_GPIO_VAF,
+	SENSOR_GPIO_ID,  //add by hanjianfeng  to  check pin of cameraid value 20130725
 	SENSOR_GPIO_FL_EN,
 	SENSOR_GPIO_FL_NOW,
 	SENSOR_GPIO_FL_RESET,
@@ -235,6 +236,10 @@ struct msm_camera_sensor_slave_info {
 	struct msm_sensor_init_params sensor_init_params;
 	uint8_t is_flash_supported;
 	enum msm_sensor_output_format_t output_format;
+	// added by yangze for camera hardware info and camera gpio id (ql1001) 2014-06-10 begin
+	char sensor_module_info[64];
+	uint8_t sensor_gpio_id;
+	// added by yangze for camera hardware info and camera gpio id (ql1001) 2014-06-10 end
 };
 
 struct msm_camera_i2c_reg_array {

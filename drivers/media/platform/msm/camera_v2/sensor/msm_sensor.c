@@ -507,9 +507,12 @@ int msm_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 	struct msm_camera_i2c_client *sensor_i2c_client;
 	struct msm_camera_slave_info *slave_info;
 	const char *sensor_name;
-#ifdef CONFIG_MACH_YULONG
-	int position;
-#endif
+	int pin_cameraid_value = 0; //added by yangze for check pin value of camera id (ql1001) 2014-06-11
+	//Add Begin  Devine  for detect qtech and ofilm hi545 module 20150610
+	#ifdef GET_OTP_ID
+	int otp_id ;
+	#endif
+	//Add End  Devine for detect qtech and ofilm hi545 module 20150610
 	if (!s_ctrl) {
 		pr_err("%s:%d failed: %pK\n",
 			__func__, __LINE__, s_ctrl);
@@ -518,7 +521,29 @@ int msm_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 	sensor_i2c_client = s_ctrl->sensor_i2c_client;
 	slave_info = s_ctrl->sensordata->slave_info;
 	sensor_name = s_ctrl->sensordata->sensor_name;
-
+       //Add Begin  Devine  for detect qtech and ofilm hi545 module 20150610
+	#ifdef GET_OTP_ID
+       pr_err("%s:s_ctrl->sensordata->sensor_name:%s\n",__func__, sensor_name);
+	if(!strncmp(sensor_name,"hi545",5)) 
+	    {
+		otp_id = msm_get_otp_id();
+		pr_err("%s:otp_id = 0x%X\n", __func__, otp_id);
+		if(otp_id == HI545_QTECH_ID) {
+			if(strcmp(sensor_name, "hi545_qtech_baly_40")!=0){
+				pr_err("%s:hi545_qtech_baly_40 OTP_ID not match\n", __func__);
+				return -1;
+				}
+			}else if(otp_id == HI545_OFILM_ID) {
+				if(strcmp(sensor_name, "hi545_ofilm_baly_40")!=0){
+					pr_err("%s:hi545_ofilm_baly_40 OTP_ID not match\n", __func__);
+					return -1;
+					}
+			}else if (otp_id == -1){
+				pr_err("%s:OTP_ID read failed\n", __func__);
+			}
+		}
+	#endif
+	//Add End  Devine for detect qtech and ofilm hi545 module 20150610
 	if (!sensor_i2c_client || !slave_info || !sensor_name) {
 		pr_err("%s:%d failed: %pK %pK %pK\n",
 			__func__, __LINE__, sensor_i2c_client, slave_info,
@@ -530,9 +555,6 @@ int msm_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 		sensor_i2c_client, slave_info->sensor_id_reg_addr,
 		&chipid, MSM_CAMERA_I2C_WORD_DATA);
 	if (rc < 0) {
-#ifdef CONFIG_MACH_YULONG
-		sensor_probed[s_ctrl->sensordata->sensor_info->position] = false;
-#endif
 		pr_err("%s: %s: read id failed\n", __func__, sensor_name);
 		return rc;
 	}
@@ -543,22 +565,18 @@ int msm_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 		pr_err("msm_sensor_match_id chip id doesnot match\n");
 		return -ENODEV;
 	}
-#ifdef CONFIG_MACH_YULONG
-	position = s_ctrl->sensordata->sensor_info->position;
-	CDBG("sensor info: name: %s sensor_otp_prepared: %d\n",
-		s_ctrl->sensordata->sensor_name, sensor_otp_prepared[position]);
-	if(s_ctrl->func_tbl->sensor_prepare_otp && !sensor_otp_prepared[position]) {
-		rc = s_ctrl->func_tbl->sensor_prepare_otp(s_ctrl);
-		if (rc) {
-			pr_err("sensor_prepare_otp failed\n");
-		} else {
-			CDBG("sensor OTP prepared");
-			sensor_otp_prepared[position] = true;
+	if(s_ctrl->sensordata->power_info.gpio_conf->gpio_num_info->gpio_num[SENSOR_GPIO_ID]){
+		pin_cameraid_value = gpio_get_value(s_ctrl->sensordata->power_info.gpio_conf->gpio_num_info->gpio_num[SENSOR_GPIO_ID]);
+		CDBG("yangze get gpio camera id value :%d\n", pin_cameraid_value);
+		CDBG("yangze get lib.c camera id value :%d\n", s_ctrl->sensordata->sensor_gpio_id);
+		if((0xff != s_ctrl->sensordata->sensor_gpio_id ) && (pin_cameraid_value != s_ctrl->sensordata->sensor_gpio_id) )
+		{
+			pr_err("yangze msm_sensor_match_id  pin camerid doesnot match\n");
+			pr_err("yangze gpio camera id value is %d\n",pin_cameraid_value);
+			pr_err("yangze lib.c camera id value is %d\n",s_ctrl->sensordata->sensor_gpio_id);
+			return -ENODEV;
 		}
 	}
-
-	sensor_probed[s_ctrl->sensordata->sensor_info->position] = true;
-#endif
 	return rc;
 }
 
