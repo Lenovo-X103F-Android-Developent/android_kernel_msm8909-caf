@@ -409,6 +409,11 @@ struct wcd_mbhc {
 	struct work_struct correct_plug_swch;
 	struct notifier_block nblock;
 
+//Modify by chaofubang to be compatible with iphone OMTP headset SW00183704 2016-04-28 begin
+#ifdef CONFIG_DEBUG_FS
+	struct dentry *debugfs_mbhc;
+#endif
+//Modify by chaofubang to be compatible with iphone OMTP headset SW00183704 2016-04-28 end
 	struct wcd_mbhc_register *wcd_mbhc_regs;
 
 	struct completion btn_press_compl;

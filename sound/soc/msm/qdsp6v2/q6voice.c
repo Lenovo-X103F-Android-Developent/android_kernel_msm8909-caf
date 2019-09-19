@@ -1,4 +1,4 @@
-/*  Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
+/*  Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -88,8 +88,8 @@ static int voice_alloc_oob_shared_mem(void);
 static int voice_free_oob_shared_mem(void);
 static int voice_alloc_oob_mem_table(void);
 static int voice_alloc_and_map_oob_mem(struct voice_data *v);
-static int voice_disable_cvp(uint32_t session_id);
-static int voice_enable_cvp(uint32_t session_id);
+static int voc_disable_cvp(uint32_t session_id);
+static int voc_enable_cvp(uint32_t session_id);
 static void voice_vote_powerstate_to_bms(struct voice_data *v, bool state);
 
 static struct voice_data *voice_get_session_by_idx(int idx);
@@ -157,8 +157,6 @@ static bool voice_is_valid_session_id(uint32_t session_id)
 	case VOIP_SESSION_VSID:
 	case QCHAT_SESSION_VSID:
 	case VOWLAN_SESSION_VSID:
-	case VOICEMMODE1_VSID:
-	case VOICEMMODE2_VSID:
 	case ALL_SESSION_VSID:
 		ret = true;
 		break;
@@ -255,12 +253,6 @@ char *voc_get_session_name(u32 session_id)
 	} else if (session_id ==
 			common.voice[VOC_PATH_VOWLAN_PASSIVE].session_id) {
 		session_name = VOWLAN_SESSION_NAME;
-	} else if (session_id ==
-		common.voice[VOC_PATH_VOICEMMODE1_PASSIVE].session_id) {
-		session_name = VOICEMMODE1_NAME;
-	} else if (session_id ==
-		common.voice[VOC_PATH_VOICEMMODE2_PASSIVE].session_id) {
-		session_name = VOICEMMODE2_NAME;
 	} else if (session_id == common.voice[VOC_PATH_FULL].session_id) {
 		session_name = VOIP_SESSION_NAME;
 	}
@@ -286,12 +278,6 @@ uint32_t voc_get_session_id(char *name)
 		else if (!strncmp(name, "VoWLAN session", 14))
 			session_id =
 			common.voice[VOC_PATH_VOWLAN_PASSIVE].session_id;
-		else if (!strcmp(name, "VoiceMMode1"))
-			session_id =
-			common.voice[VOC_PATH_VOICEMMODE1_PASSIVE].session_id;
-		else if (!strcmp(name, "VoiceMMode2"))
-			session_id =
-			common.voice[VOC_PATH_VOICEMMODE2_PASSIVE].session_id;
 		else
 			session_id = common.voice[VOC_PATH_FULL].session_id;
 
@@ -331,14 +317,6 @@ static struct voice_data *voice_get_session(u32 session_id)
 		v = &common.voice[VOC_PATH_VOWLAN_PASSIVE];
 		break;
 
-	case VOICEMMODE1_VSID:
-		v = &common.voice[VOC_PATH_VOICEMMODE1_PASSIVE];
-		break;
-
-	case VOICEMMODE2_VSID:
-		v = &common.voice[VOC_PATH_VOICEMMODE2_PASSIVE];
-		break;
-
 	case ALL_SESSION_VSID:
 		break;
 
@@ -348,7 +326,7 @@ static struct voice_data *voice_get_session(u32 session_id)
 		break;
 	}
 
-	pr_debug("%s:session_id 0x%x session handle %pK\n",
+	pr_debug("%s:session_id 0x%x session handle %p\n",
 		__func__, session_id, v);
 
 	return v;
@@ -383,14 +361,6 @@ int voice_get_idx_for_session(u32 session_id)
 		idx = VOC_PATH_VOWLAN_PASSIVE;
 		break;
 
-	case VOICEMMODE1_VSID:
-		idx = VOC_PATH_VOICEMMODE1_PASSIVE;
-		break;
-
-	case VOICEMMODE2_VSID:
-		idx = VOC_PATH_VOICEMMODE2_PASSIVE;
-		break;
-
 	case ALL_SESSION_VSID:
 		idx = MAX_VOC_SESSIONS - 1;
 		break;
@@ -408,6 +378,11 @@ static struct voice_data *voice_get_session_by_idx(int idx)
 {
 	return ((idx < 0 || idx >= MAX_VOC_SESSIONS) ?
 				NULL : &common.voice[idx]);
+}
+
+static bool is_voice_session(u32 session_id)
+{
+	return (session_id == common.voice[VOC_PATH_PASSIVE].session_id);
 }
 
 static bool is_voip_session(u32 session_id)
@@ -433,18 +408,6 @@ static bool is_qchat_session(u32 session_id)
 static bool is_vowlan_session(u32 session_id)
 {
 	return (session_id == common.voice[VOC_PATH_VOWLAN_PASSIVE].session_id);
-}
-
-static bool is_voicemmode1(u32 session_id)
-{
-	return session_id ==
-			common.voice[VOC_PATH_VOICEMMODE1_PASSIVE].session_id;
-}
-
-static bool is_voicemmode2(u32 session_id)
-{
-	return session_id ==
-			common.voice[VOC_PATH_VOICEMMODE2_PASSIVE].session_id;
 }
 
 static bool is_voc_state_active(int voc_state)
@@ -492,43 +455,10 @@ static bool is_other_session_active(u32 session_id)
 	return ret;
 }
 
-static bool is_sub1_vsid(u32 session_id)
-{
-	bool ret;
-
-	switch (session_id) {
-	case VOICE_SESSION_VSID:
-	case VOLTE_SESSION_VSID:
-	case VOWLAN_SESSION_VSID:
-	case VOICEMMODE1_VSID:
-		ret = true;
-		break;
-	default:
-		ret = false;
-	}
-
-	return ret;
-}
-
-static bool is_sub2_vsid(u32 session_id)
-{
-	bool ret;
-
-	switch (session_id) {
-	case VOICE2_SESSION_VSID:
-	case VOICEMMODE2_VSID:
-		ret = true;
-		break;
-	default:
-		ret = false;
-	}
-
-	return ret;
-}
-
 static bool is_voice_app_id(u32 session_id)
 {
-	return is_sub1_vsid(session_id) || is_sub2_vsid(session_id);
+	return (((session_id & APP_ID_MASK) >> APP_ID_SHIFT) ==
+						VSID_APP_CS_VOICE);
 }
 
 static void init_session_id(void)
@@ -539,10 +469,6 @@ static void init_session_id(void)
 	common.voice[VOC_PATH_FULL].session_id = VOIP_SESSION_VSID;
 	common.voice[VOC_PATH_QCHAT_PASSIVE].session_id = QCHAT_SESSION_VSID;
 	common.voice[VOC_PATH_VOWLAN_PASSIVE].session_id = VOWLAN_SESSION_VSID;
-	common.voice[VOC_PATH_VOICEMMODE1_PASSIVE].session_id =
-							VOICEMMODE1_VSID;
-	common.voice[VOC_PATH_VOICEMMODE2_PASSIVE].session_id =
-							VOICEMMODE2_VSID;
 }
 
 static int voice_apr_register(uint32_t session_id)
@@ -784,14 +710,6 @@ static int voice_create_mvm_cvs_session(struct voice_data *v)
 				strlcpy(mvm_session_cmd.mvm_session.name,
 				VOWLAN_SESSION_VSID_STR,
 				strlen(VOWLAN_SESSION_VSID_STR)+1);
-			} else if (is_voicemmode1(v->session_id)) {
-				strlcpy(mvm_session_cmd.mvm_session.name,
-				VOICEMMODE1_VSID_STR,
-				strlen(VOICEMMODE1_VSID_STR) + 1);
-			} else if (is_voicemmode2(v->session_id)) {
-				strlcpy(mvm_session_cmd.mvm_session.name,
-				VOICEMMODE2_VSID_STR,
-				strlen(VOICEMMODE2_VSID_STR) + 1);
 			} else {
 				strlcpy(mvm_session_cmd.mvm_session.name,
 				"default modem voice",
@@ -890,14 +808,6 @@ static int voice_create_mvm_cvs_session(struct voice_data *v)
 				strlcpy(cvs_session_cmd.cvs_session.name,
 				VOWLAN_SESSION_VSID_STR,
 				strlen(VOWLAN_SESSION_VSID_STR)+1);
-			} else if (is_voicemmode1(v->session_id)) {
-				strlcpy(cvs_session_cmd.cvs_session.name,
-				VOICEMMODE1_VSID_STR,
-				strlen(VOICEMMODE1_VSID_STR) + 1);
-			} else if (is_voicemmode2(v->session_id)) {
-				strlcpy(cvs_session_cmd.cvs_session.name,
-				VOICEMMODE2_VSID_STR,
-				strlen(VOICEMMODE2_VSID_STR) + 1);
 			} else {
 			strlcpy(cvs_session_cmd.cvs_session.name,
 				"default modem voice",
@@ -3068,7 +2978,7 @@ static int voice_map_cal_memory(struct cal_block_data *cal_block,
 		cal_block->map_data.map_size,
 		VOC_CAL_MEM_MAP_TOKEN);
 	if (result < 0) {
-		pr_err("%s: Mmap did not work! addr = 0x%pK, size = %zd\n",
+		pr_err("%s: Mmap did not work! addr = 0x%pa, size = %zd\n",
 			__func__,
 			&cal_block->cal_data.paddr,
 			cal_block->map_data.map_size);
@@ -3089,13 +2999,6 @@ static int remap_cal_data(struct cal_block_data *cal_block,
 	int ret = 0;
 	pr_debug("%s\n", __func__);
 
-	if (cal_block->map_data.ion_client == NULL) {
-		pr_err("%s: No ION allocation for session_id %d!\n",
-			__func__, session_id);
-		ret = -EINVAL;
-		goto done;
-	}
-
 	if ((cal_block->map_data.map_size > 0) &&
 		(cal_block->map_data.q6map_handle == 0)) {
 
@@ -3108,7 +3011,7 @@ static int remap_cal_data(struct cal_block_data *cal_block,
 			goto done;
 		}
 	} else {
-		pr_debug("%s:  Cal block 0x%pK, size %zd already mapped. Q6 map handle = %d\n",
+		pr_debug("%s:  Cal block 0x%pa, size %zd already mapped. Q6 map handle = %d\n",
 			__func__, &cal_block->cal_data.paddr,
 			cal_block->map_data.map_size,
 			cal_block->map_data.q6map_handle);
@@ -3306,7 +3209,7 @@ int voc_map_rtac_block(struct rtac_cal_block_data *cal_block)
 	if (!is_rtac_memory_allocated()) {
 		result = voice_alloc_rtac_mem_map_table();
 		if (result < 0) {
-			pr_err("%s: RTAC alloc mem map table did not work! addr = 0x%pK, size = %d\n",
+			pr_err("%s: RTAC alloc mem map table did not work! addr = 0x%pa, size = %d\n",
 				__func__,
 				&cal_block->cal_data.paddr,
 				cal_block->map_data.map_size);
@@ -3321,7 +3224,7 @@ int voc_map_rtac_block(struct rtac_cal_block_data *cal_block)
 		cal_block->map_data.map_size,
 		VOC_RTAC_MEM_MAP_TOKEN);
 	if (result < 0) {
-		pr_err("%s: RTAC mmap did not work! addr = 0x%pK, size = %d\n",
+		pr_err("%s: RTAC mmap did not work! addr = 0x%pa, size = %d\n",
 			__func__,
 			&cal_block->cal_data.paddr,
 			cal_block->map_data.map_size);
@@ -4012,7 +3915,7 @@ static int voice_send_cvs_packet_exchange_config_cmd(struct voice_data *v)
 	packet_exchange_config_pkt.enc_buf_addr = (uint32_t)enc_buf;
 	packet_exchange_config_pkt.enc_buf_size = 4096;
 
-	pr_debug("%s: dec buf: add %pK, size %d, enc buf: add %pK, size %d\n",
+	pr_debug("%s: dec buf: add %pa, size %d, enc buf: add %pa, size %d\n",
 		__func__,
 		&dec_buf,
 		packet_exchange_config_pkt.dec_buf_size,
@@ -4425,7 +4328,7 @@ int voc_start_record(uint32_t port_id, uint32_t set, uint32_t session_id)
 
 			break;
 		}
-		pr_debug("%s: port_id: %d, set: %d, v: %pK\n",
+		pr_debug("%s: port_id: %d, set: %d, v: %p\n",
 			 __func__, port_id, set, v);
 
 		mutex_lock(&v->lock);
@@ -4732,48 +4635,55 @@ done:
 
 int voc_start_playback(uint32_t set, uint16_t port_id)
 {
-	struct voice_data *v = NULL;
 	int ret = 0;
-	struct voice_session_itr itr;
 	u16 cvs_handle;
 
-	pr_debug("%s port_id = %#x set = %d", __func__, port_id, set);
+	struct voice_data *v = NULL;
 
-	voice_itr_init(&itr, ALL_SESSION_VSID);
-	while (voice_itr_get_next_session(&itr, &v)) {
-		if ((v != NULL) &&
-		    (((port_id == VOICE_PLAYBACK_TX) &&
-		       is_sub1_vsid(v->session_id)) ||
-		     ((port_id == VOICE2_PLAYBACK_TX) &&
-		       is_sub2_vsid(v->session_id)))) {
+	if (port_id == VOICE_PLAYBACK_TX)
+		v = voice_get_session(voc_get_session_id(VOICE_SESSION_NAME));
+	else if (port_id == VOICE2_PLAYBACK_TX)
+		v = voice_get_session(voc_get_session_id(VOICE2_SESSION_NAME));
+	else
+		pr_err("%s: Invalid port_id 0x%x", __func__, port_id);
 
-			mutex_lock(&v->lock);
-			v->music_info.port_id = port_id;
-			v->music_info.play_enable = set;
+	while (v != NULL) {
+		mutex_lock(&v->lock);
+		v->music_info.port_id = port_id;
+		v->music_info.play_enable = set;
+		if (set)
+			v->music_info.count++;
+		else
+			v->music_info.count--;
+		pr_debug("%s: music_info count =%d\n", __func__,
+			v->music_info.count);
+
+		cvs_handle = voice_get_cvs_handle(v);
+		if (cvs_handle != 0) {
 			if (set)
-				v->music_info.count++;
+				ret = voice_cvs_start_playback(v);
 			else
-				v->music_info.count--;
-			pr_debug("%s: music_info count=%d\n", __func__,
-				 v->music_info.count);
+				ret = voice_cvs_stop_playback(v);
+		}
 
-			cvs_handle = voice_get_cvs_handle(v);
-			if (cvs_handle != 0) {
-				if (set)
-					ret = voice_cvs_start_playback(v);
-				else
-					ret = voice_cvs_stop_playback(v);
-			}
-			mutex_unlock(&v->lock);
+		mutex_unlock(&v->lock);
+
+		/* Voice and VoLTE call use the same pseudo port and hence
+		 * use the same mixer control. So enable incall delivery
+		 * for VoLTE as well with Voice.
+		 */
+		if (is_voice_session(v->session_id)) {
+			v = voice_get_session(voc_get_session_id(
+							VOLTE_SESSION_NAME));
 		} else {
-			pr_err("%s: Invalid session\n", __func__);
+			break;
 		}
 	}
 
 	return ret;
 }
 
-static int voice_disable_cvp(uint32_t session_id)
+static int voc_disable_cvp(uint32_t session_id)
 {
 	struct voice_data *v = voice_get_session(session_id);
 	int ret = 0;
@@ -4812,7 +4722,7 @@ done:
 	return ret;
 }
 
-static int voice_enable_cvp(uint32_t session_id)
+static int voc_enable_cvp(uint32_t session_id)
 {
 	struct voice_data *v = voice_get_session(session_id);
 	int ret = 0;
@@ -5100,7 +5010,9 @@ int voc_set_pp_enable(uint32_t session_id, uint32_t module_id, uint32_t enable)
 	voice_itr_init(&itr, session_id);
 	while (voice_itr_get_next_session(&itr, &v)) {
 		if (v != NULL) {
-			if (!(is_voice_app_id(v->session_id)))
+			if (!(is_voice_app_id(v->session_id) ||
+			      is_volte_session(v->session_id) ||
+			      is_vowlan_session(v->session_id)))
 				continue;
 
 			mutex_lock(&v->lock);
@@ -5504,17 +5416,17 @@ int voc_set_lch(uint32_t session_id, enum voice_lch_mode lch_mode)
 			goto done;
 		}
 	} else {
-		ret = voice_disable_cvp(session_id);
+		ret = voc_disable_cvp(session_id);
 		if (ret < 0) {
-			pr_err("%s: voice_disable_cvp failed ret=%d\n",
+			pr_err("%s: voc_disable_cvp failed ret=%d\n",
 				__func__, ret);
 			goto done;
 		}
 
 		/* Mute and topology_none are set during vocproc enable */
-		ret = voice_enable_cvp(session_id);
+		ret = voc_enable_cvp(session_id);
 		if (ret < 0) {
-			pr_err("%s: voice_enable_cvp failed ret=%d\n",
+			pr_err("%s: voc_enable_cvp failed ret=%d\n",
 				 __func__, ret);
 			goto done;
 		}
@@ -6488,12 +6400,12 @@ static int voice_alloc_oob_shared_mem(void)
 		cnt++;
 	}
 
-	pr_debug("%s buf[0].data:[%pK], buf[0].phys:[%pK], &buf[0].phys:[%pK],\n",
+	pr_debug("%s buf[0].data:[%p], buf[0].phys:[%pa], &buf[0].phys:[%p],\n",
 		 __func__,
 		(void *)v->shmem_info.sh_buf.buf[0].data,
 		&v->shmem_info.sh_buf.buf[0].phys,
 		(void *)&v->shmem_info.sh_buf.buf[0].phys);
-	pr_debug("%s: buf[1].data:[%pK], buf[1].phys[%pK], &buf[1].phys[%pK]\n",
+	pr_debug("%s: buf[1].data:[%p], buf[1].phys[%pa], &buf[1].phys[%p]\n",
 		__func__,
 		(void *)v->shmem_info.sh_buf.buf[1].data,
 		&v->shmem_info.sh_buf.buf[1].phys,
@@ -6535,7 +6447,7 @@ static int voice_alloc_oob_mem_table(void)
 	}
 
 	v->shmem_info.memtbl.size = sizeof(struct vss_imemory_table_t);
-	pr_debug("%s data[%pK]phys[%pK][%pK]\n", __func__,
+	pr_debug("%s data[%p]phys[%pa][%p]\n", __func__,
 		 (void *)v->shmem_info.memtbl.data,
 		 &v->shmem_info.memtbl.phys,
 		 (void *)&v->shmem_info.memtbl.phys);
@@ -6887,7 +6799,7 @@ static int voice_alloc_cal_mem_map_table(void)
 	}
 
 	common.cal_mem_map_table.size = sizeof(struct vss_imemory_table_t);
-	pr_debug("%s: data %pK phys %pK\n", __func__,
+	pr_debug("%s: data %p phys %pa\n", __func__,
 		 common.cal_mem_map_table.data,
 		 &common.cal_mem_map_table.phys);
 
@@ -6914,7 +6826,7 @@ static int voice_alloc_rtac_mem_map_table(void)
 	}
 
 	common.rtac_mem_map_table.size = sizeof(struct vss_imemory_table_t);
-	pr_debug("%s: data %pK phys %pK\n", __func__,
+	pr_debug("%s: data %p phys %pa\n", __func__,
 		 common.rtac_mem_map_table.data,
 		 &common.rtac_mem_map_table.phys);
 
@@ -7503,7 +7415,7 @@ static int voice_alloc_source_tracking_shared_memory(void)
 		&(common.source_tracking_sh_mem.sh_mem_block.handle),
 		BUFFER_BLOCK_SIZE,
 		&(common.source_tracking_sh_mem.sh_mem_block.phys),
-		&(common.source_tracking_sh_mem.sh_mem_block.size),
+		(size_t *)&(common.source_tracking_sh_mem.sh_mem_block.size),
 		&(common.source_tracking_sh_mem.sh_mem_block.data));
 	if (ret < 0) {
 		pr_err("%s: audio ION alloc failed for sh_mem block, ret = %d\n",
@@ -7515,18 +7427,18 @@ static int voice_alloc_source_tracking_shared_memory(void)
 	memset((void *)(common.source_tracking_sh_mem.sh_mem_block.data), 0,
 		   common.source_tracking_sh_mem.sh_mem_block.size);
 
-	pr_debug("%s: sh_mem_block: phys:[%pK], data:[0x%pK], size:[%zd]\n",
+	pr_debug("%s: sh_mem_block: phys:[%pa], data:[0x%p], size:[%zd]\n",
 		 __func__,
 		&(common.source_tracking_sh_mem.sh_mem_block.phys),
 		(void *)(common.source_tracking_sh_mem.sh_mem_block.data),
-		(common.source_tracking_sh_mem.sh_mem_block.size));
+		(size_t)(common.source_tracking_sh_mem.sh_mem_block.size));
 
 	ret = msm_audio_ion_alloc("source_tracking_sh_mem_table",
 		&(common.source_tracking_sh_mem.sh_mem_table.client),
 		&(common.source_tracking_sh_mem.sh_mem_table.handle),
 		sizeof(struct vss_imemory_table_t),
 		&(common.source_tracking_sh_mem.sh_mem_table.phys),
-		&(common.source_tracking_sh_mem.sh_mem_table.size),
+		(size_t *)&(common.source_tracking_sh_mem.sh_mem_table.size),
 		&(common.source_tracking_sh_mem.sh_mem_table.data));
 	if (ret < 0) {
 		pr_err("%s: audio ION alloc failed for sh_mem table, ret = %d\n",
@@ -7546,11 +7458,11 @@ static int voice_alloc_source_tracking_shared_memory(void)
 	memset((void *)(common.source_tracking_sh_mem.sh_mem_table.data), 0,
 		common.source_tracking_sh_mem.sh_mem_table.size);
 
-	pr_debug("%s sh_mem_table: phys:[%pK], data:[0x%pK], size:[%zd],\n",
+	pr_debug("%s sh_mem_table: phys:[%pa], data:[0x%p], size:[%zd],\n",
 		 __func__,
 		&(common.source_tracking_sh_mem.sh_mem_table.phys),
 		(void *)(common.source_tracking_sh_mem.sh_mem_table.data),
-		(common.source_tracking_sh_mem.sh_mem_table.size));
+		(size_t)(common.source_tracking_sh_mem.sh_mem_table.size));
 
 done:
 	pr_debug("%s: Exit, ret=%d\n", __func__, ret);

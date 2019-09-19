@@ -61,6 +61,8 @@ extern const u8 msm8x16_wcd_reg_readonly[MSM8X16_WCD_CACHE_SIZE];
 extern const u8 msm8x16_wcd_reset_reg_defaults[MSM8X16_WCD_CACHE_SIZE];
 extern const u8 cajon_digital_reg[MSM8X16_WCD_CACHE_SIZE];
 
+extern int ext_spk_pa_left_gpio;//add by zhuyan to enable audio basic function  SW00183968 20160203
+extern int ext_spk_pa_right_gpio;//add by zhuyan to enable audio basic function  SW00183968 20160203
 enum codec_versions {
 	TOMBAK_1_0,
 	TOMBAK_2_0,
@@ -214,10 +216,10 @@ struct msm8916_asoc_mach_data {
 	int codec_type;
 	int ext_pa;
 	int us_euro_gpio;
-#ifdef CONFIG_MACH_JALEBI
-	int ext_spk_amp_gpio;
-#endif
-	int spk_ext_pa_gpio;
+	/*add by zhuyan to enable audio basic function  SW00183968 20160203 begin*/
+	int spk_left_ext_pa_gpio;
+	int spk_right_ext_pa_gpio;
+	/*add by zhuyan to enable audio basic function  SW00183968 20160203 end*/
 	int mclk_freq;
 	int lb_mode;
 	u8 micbias1_cap_mode;
@@ -229,7 +231,6 @@ struct msm8916_asoc_mach_data {
 	struct mutex wsa_mclk_mutex;
 	struct delayed_work disable_mclk_work;
 	struct afe_digital_clk_cfg digital_cdc_clk;
-	struct afe_clk_set digital_cdc_core_clk;
 	void __iomem *vaddr_gpio_mux_spkr_ctl;
 	void __iomem *vaddr_gpio_mux_mic_ctl;
 	void __iomem *vaddr_gpio_mux_quin_ctl;
@@ -289,9 +290,6 @@ struct msm8x16_wcd_priv {
 	bool clock_active;
 	bool config_mode_active;
 	u16 boost_option;
-#ifdef CONFIG_MACH_JALEBI
-	u16 ext_spk_mode;
-#endif
 	bool spk_boost_set;
 	bool ear_pa_boost_set;
 	bool ext_spk_boost_set;

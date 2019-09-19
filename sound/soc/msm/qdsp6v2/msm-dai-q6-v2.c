@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1275,11 +1275,6 @@ static int msm_dai_q6_set_channel_map(struct snd_soc_dai *dai,
 			pr_err("%s: rx slot not found\n", __func__);
 			return -EINVAL;
 		}
-		if (rx_num > AFE_PORT_MAX_AUDIO_CHAN_CNT) {
-			pr_err("%s: invalid rx num %d\n", __func__, rx_num);
-			return -EINVAL;
-		}
-
 		for (i = 0; i < rx_num; i++) {
 			dai_data->port_config.slim_sch.shared_ch_mapping[i] =
 			    rx_slot[i];
@@ -1310,11 +1305,6 @@ static int msm_dai_q6_set_channel_map(struct snd_soc_dai *dai,
 			pr_err("%s: tx slot not found\n", __func__);
 			return -EINVAL;
 		}
-		if (tx_num > AFE_PORT_MAX_AUDIO_CHAN_CNT) {
-			pr_err("%s: invalid tx num %d\n", __func__, tx_num);
-			return -EINVAL;
-		}
-
 		for (i = 0; i < tx_num; i++) {
 			dai_data->port_config.slim_sch.shared_ch_mapping[i] =
 			    tx_slot[i];
@@ -1482,25 +1472,6 @@ static struct snd_soc_dai_driver msm_dai_q6_afe_tx_dai[] = {
 		},
 		.ops = &msm_dai_q6_ops,
 		.id = RT_PROXY_DAI_001_TX,
-		.probe = msm_dai_q6_dai_probe,
-		.remove = msm_dai_q6_dai_remove,
-	},
-};
-
-static struct snd_soc_dai_driver msm_dai_q6_afe_lb_tx_dai[] = {
-	{
-		.capture = {
-			.stream_name = "AFE Loopback Capture",
-			.aif_name = "AFE_LOOPBACK_TX",
-			.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_8000 |
-			SNDRV_PCM_RATE_16000,
-			.formats = SNDRV_PCM_FMTBIT_S16_LE,
-			.channels_min = 1,
-			.channels_max = 8,
-			.rate_min = 8000,
-			.rate_max = 48000,
-		},
-		.id = AFE_LOOPBACK_TX,
 		.probe = msm_dai_q6_dai_probe,
 		.remove = msm_dai_q6_dai_remove,
 	},
@@ -1695,7 +1666,7 @@ static int msm_auxpcm_dev_probe(struct platform_device *pdev)
 		goto fail_pdata_nomem;
 	}
 
-	dev_dbg(&pdev->dev, "%s: dev %pK, dai_data %pK, auxpcm_pdata %pK\n",
+	dev_dbg(&pdev->dev, "%s: dev %p, dai_data %p, auxpcm_pdata %p\n",
 		__func__, &pdev->dev, dai_data, auxpcm_pdata);
 
 	rc = of_property_read_u32_array(pdev->dev.of_node,
@@ -3105,11 +3076,6 @@ register_slim_capture:
 		if (rc)
 			pr_err("%s: Device not found stream name %s\n",
 				__func__, stream_name);
-		break;
-	case AFE_LOOPBACK_TX:
-		rc = snd_soc_register_component(&pdev->dev,
-						&msm_dai_q6_component,
-						&msm_dai_q6_afe_lb_tx_dai[0], 1);
 		break;
 	case INT_BT_SCO_RX:
 		rc = snd_soc_register_component(&pdev->dev, &msm_dai_q6_component,
