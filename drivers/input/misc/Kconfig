@@ -809,6 +809,15 @@ config SENSORS_MMC3X30
 	  To compile this driver as a module, choose M here: the
 	  module will be called mmc3X30.
 
+config HALL_AHXXX_SENSOR
+	tristate "ahxxx hall sensor driver"
+	default n
+	help
+	  Say Y here to enable the AHXXX hall sensor driver.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called AHXXX.
+
 config SENSORS_AKM09911
 	tristate "AKM09911 3-axis electronic compass sensor driver"
 	depends on I2C
